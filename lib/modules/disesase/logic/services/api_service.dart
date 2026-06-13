@@ -14,8 +14,9 @@ import '../models/history_model.dart';
 
 class ApiService {
   // Change to localhost untuk testing lokal
-  // static const String baseUrl = 'http://192.168.100.8:7788';
-  static const String baseUrl = 'https://predict-disease.petanitech.com';
+  // 🔧 TESTING LOKAL: uncomment baris di bawah, isi IP laptop kamu (ipconfig/ifconfig)
+  // static const String baseUrl = 'http://192.168.100.8:8000'; // ← GANTI IP LAPTOP DI SINI
+  static const String baseUrl = 'http://192.168.100.39:8000'; // production lama — ganti saat testing lokal
   // Atau tetap gunakan Railway untuk production:
   // static const String baseUrl = 'https://server-padi-disease-detection-ai-production.up.railway.app';
 
@@ -280,6 +281,9 @@ class ApiService {
         contentType: http_parser.MediaType.parse('image/jpeg'),
       );
       request.files.add(multipartFile);
+
+      // ✅ IoT sensor integration — kirim data sensor real-time ke LLM
+      request.fields['use_sensor'] = 'true';
 
       print('🔄 Uploading image (${multipartFile.length} bytes)...');
       final streamedResponse = await request.send().timeout(timeoutDuration);

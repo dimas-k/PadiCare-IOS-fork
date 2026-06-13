@@ -170,9 +170,9 @@ class PredictionResult {
     return PredictionResult(
       predictedClass: json['predicted_class'] ?? '',
       confidencePercentage: (json['confidence_percentage'] ?? 0).toDouble(),
-      expertAdvice: json['expert_advice'],
-      processingTime: json['processing_time']?.toDouble(),
-      success: json['success'] ?? false,
+      expertAdvice: json['recommendation'] ?? json['expert_advice'],
+      processingTime: (json['detection_time_ms'] ?? json['processing_time'])?.toDouble(),
+      success: json['predicted_class'] != null,
       predictionId: json['prediction_id']?.toString(),
       savedToDatabase: json['saved_to_database'],
       databaseNote: json['database_note'],
