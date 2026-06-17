@@ -1,4 +1,4 @@
-// COMPLETELY SIMPLIFIED - NO STATS
+// FIXED: field names disesuaikan dengan backend HistoryItem response
 import 'dart:convert';
 import 'dart:ui' show Color;
 import 'package:flutter/material.dart' show Colors;
@@ -19,7 +19,7 @@ class HistoryResponse {
 
   factory HistoryResponse.fromJson(Map<String, dynamic> json) {
     try {
-      print('🔍 Parsing COMPLETELY SIMPLIFIED HistoryResponse...');
+      print('🔍 Parsing HistoryResponse...');
 
       // Parse history items
       List<PredictionHistoryItem> historyItems = [];
@@ -50,17 +50,19 @@ class HistoryResponse {
         pagination = HistoryPagination.empty();
       }
 
-      print(
-        '✅ SIMPLIFIED HistoryResponse parsed successfully: ${historyItems.length} items',
-      );
+      print('✅ HistoryResponse parsed: ${historyItems.length} items');
+
+      // FIX: backend tidak kirim field 'success', anggap sukses jika
+      // response punya key 'history' (tidak null)
+      final bool success = json['success'] ?? (json['history'] != null);
 
       return HistoryResponse(
-        success: json['success'] ?? false,
+        success: success,
         history: historyItems,
         pagination: pagination,
       );
     } catch (e, stackTrace) {
-      print('❌ Error parsing SIMPLIFIED HistoryResponse: $e');
+      print('❌ Error parsing HistoryResponse: $e');
       print('🔍 StackTrace: $stackTrace');
       rethrow;
     }
@@ -78,6 +80,11 @@ class PredictionHistoryItem {
   final List<ChatMessageItem> chatMessages;
   final List<TopPrediction>? topPredictions;
 
+  // Field tambahan dari backend yang belum diparsing sebelumnya
+  final String? llmUsed;
+  final bool? sensorUsed;
+  final String? voteMethod;
+
   PredictionHistoryItem({
     required this.id,
     required this.imageFilename,
@@ -88,22 +95,21 @@ class PredictionHistoryItem {
     this.processingTime,
     required this.chatMessages,
     this.topPredictions,
+    this.llmUsed,
+    this.sensorUsed,
+    this.voteMethod,
   });
 
   factory PredictionHistoryItem.fromJson(Map<String, dynamic> json) {
     try {
-      // Parse chat messages dengan improved error handling
+      // Parse chat messages
       List<ChatMessageItem> messages = [];
 
       if (json['chat_messages'] != null) {
-        print(
-          '📊 Raw chat_messages type: ${json['chat_messages'].runtimeType}',
-        );
-        print('📊 Raw chat_messages: ${json['chat_messages']}');
+        print('📊 Raw chat_messages type: ${json['chat_messages'].runtimeType}');
 
         var chatData = json['chat_messages'];
 
-        // Handle different data types
         if (chatData is String) {
           try {
             chatData = jsonDecode(chatData);
@@ -115,16 +121,13 @@ class PredictionHistoryItem {
 
         if (chatData is List) {
           print('📊 Processing ${chatData.length} chat messages...');
-
           for (var i = 0; i < chatData.length; i++) {
             try {
               var msgData = chatData[i];
               if (msgData != null && msgData is Map<String, dynamic>) {
                 var chatMessage = ChatMessageItem.fromJson(msgData);
                 messages.add(chatMessage);
-                print(
-                  '✅ Parsed chat message $i: ${chatMessage.isUser ? "User" : "Bot"}',
-                );
+                print('✅ Parsed chat message $i: ${chatMessage.isUser ? "User" : "Bot"}');
               } else {
                 print('⚠️ Invalid chat message format at index $i: $msgData');
               }
@@ -141,11 +144,13 @@ class PredictionHistoryItem {
 
       print('✅ Successfully parsed ${messages.length} chat messages');
 
-      // Parse created_at
+      // Parse created_at — backend kirim field 'timestamp'
+      // FIX: backend HistoryItem pakai 'timestamp', bukan 'created_at'
       DateTime createdAt;
       try {
-        if (json['created_at'] is String) {
-          createdAt = DateTime.parse(json['created_at']);
+        final rawDate = json['timestamp'] ?? json['created_at'];
+        if (rawDate is String) {
+          createdAt = DateTime.parse(rawDate);
         } else {
           createdAt = DateTime.now();
         }
@@ -154,7 +159,6 @@ class PredictionHistoryItem {
         createdAt = DateTime.now();
       }
 
-      // Parse top predictions
       // Parse top predictions
       List<TopPrediction>? topPredictions;
       if (json['top_predictions'] != null && json['top_predictions'] is List) {
@@ -182,15 +186,32 @@ class PredictionHistoryItem {
       }
 
       return PredictionHistoryItem(
-        id: json['id']?.toString() ?? '',
+        // FIX 1: backend kirim 'prediction_id', bukan 'id'
+        id: json['prediction_id']?.toString() ?? json['id']?.toString() ?? '',
+
+        // FIX 2: backend tidak kirim 'image_filename', hardcode kosong
         imageFilename: json['image_filename']?.toString() ?? '',
+
         predictedClass: json['predicted_class']?.toString() ?? '',
-        confidencePercentage: (json['confidence_percentage'] ?? 0.0).toDouble(),
-        expertAdvice: json['expert_advice']?.toString(),
+
+        // FIX 3: backend HistoryItem kirim 'confidence', bukan 'confidence_percentage'
+        confidencePercentage: (json['confidence'] ?? json['confidence_percentage'] ?? 0.0).toDouble(),
+
+        // FIX 4: backend kirim 'recommendation', bukan 'expert_advice'
+        expertAdvice: json['recommendation']?.toString() ?? json['expert_advice']?.toString(),
+
         createdAt: createdAt,
-        processingTime: json['processing_time']?.toDouble(),
-        chatMessages: messages, // PASTIKAN MESSAGES DISET
+
+        // FIX 5: backend kirim 'detection_time_ms', bukan 'processing_time'
+        processingTime: (json['detection_time_ms'] ?? json['processing_time'])?.toDouble(),
+
+        chatMessages: messages,
         topPredictions: topPredictions,
+
+        // Field tambahan dari backend
+        llmUsed: json['llm_used']?.toString(),
+        sensorUsed: json['sensor_used'] as bool?,
+        voteMethod: json['vote_method']?.toString(),
       );
     } catch (e, stackTrace) {
       print('❌ Error parsing PredictionHistoryItem: $e');
@@ -216,6 +237,12 @@ class PredictionHistoryItem {
     if (confidencePercentage >= 80) return Colors.green;
     if (confidencePercentage >= 60) return Colors.orange;
     return Colors.red;
+  }
+
+  String get confidenceLevel {
+    if (confidencePercentage >= 80) return 'Tinggi';
+    if (confidencePercentage >= 60) return 'Sedang';
+    return 'Rendah';
   }
 
   // Top predictions helpers
@@ -286,11 +313,17 @@ class HistoryPagination {
   });
 
   factory HistoryPagination.fromJson(Map<String, dynamic> json) {
+    final int limit = json['limit'] ?? 20;
+    final int offset = json['offset'] ?? 0;
+    final int total = json['total'] ?? 0;
+    // FIX: backend tidak kirim 'has_more', hitung manual
+    final bool hasMore = json['has_more'] ?? (offset + limit < total);
+
     return HistoryPagination(
-      limit: json['limit'] ?? 20,
-      offset: json['offset'] ?? 0,
-      total: json['total'] ?? 0,
-      hasMore: json['has_more'] ?? false,
+      limit: limit,
+      offset: offset,
+      total: total,
+      hasMore: hasMore,
     );
   }
 

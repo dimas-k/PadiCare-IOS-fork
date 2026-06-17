@@ -13,11 +13,10 @@ import '../models/chat_model.dart';
 import '../models/history_model.dart';
 
 class ApiService {
-  // Change to localhost untuk testing lokal
-  // 🔧 TESTING LOKAL: uncomment baris di bawah, isi IP laptop kamu (ipconfig/ifconfig)
-  // static const String baseUrl = 'http://192.168.100.8:8000'; // ← GANTI IP LAPTOP DI SINI
-  static const String baseUrl = 'http://192.168.100.39:8000'; // production lama — ganti saat testing lokal
-  // Atau tetap gunakan Railway untuk production:
+  // 🔧 GANTI IP SESUAI IP LAPTOP KAMU (cek: ipconfig di Windows / ifconfig di Mac)
+  // Contoh: static const String baseUrl = 'http://192.168.1.5:8000';
+  static const String baseUrl = 'http://192.168.100.39:8000';
+  // Production Railway (uncomment jika deploy):
   // static const String baseUrl = 'https://server-padi-disease-detection-ai-production.up.railway.app';
 
   static const Duration timeoutDuration = Duration(seconds: 60);
@@ -39,17 +38,15 @@ class ApiService {
     print('🚀 Session initialized - User ID: $_userId');
   }
 
-  // Get or generate user ID (perbaikan: gunakan device_id sebagai identifier utama)
+  // Get or generate user ID
   Future<String> _getUserId() async {
     if (_userId != null) return _userId!;
 
-    await _getDeviceInfo(); // Pastikan device info sudah loaded
+    await _getDeviceInfo();
 
-    // Gunakan device_id sebagai user ID
     if (_deviceId != null && _deviceId!.isNotEmpty && _deviceId != 'unknown') {
       _userId = _deviceId;
     } else {
-      // Fallback: generate random string jika device_id tidak tersedia
       _userId = DateTime.now().millisecondsSinceEpoch.toString();
     }
 
@@ -57,19 +54,16 @@ class ApiService {
     return _userId!;
   }
 
-  // Mungkin perlu mengubah timeout untuk check server status
+  // FIX Bug 2: checkServerStatus sekarang hit /health (bukan '/' yang tidak ada)
   Future<bool> checkServerStatus() async {
     try {
       print('🔍 Checking server status...');
 
-      // Coba request ke endpoint apapun yang pasti ada di server Anda
-      // Misalnya gunakan '/' atau endpoint lain yang Anda tahu pasti ada
-      final uri = Uri.parse('$baseUrl/');
-      final response = await http.get(uri).timeout(Duration(seconds: 5));
+      // FIX: gunakan /health endpoint yang ada di backend
+      final uri = Uri.parse('$baseUrl/health');
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       print('✅ Server status check: ${response.statusCode}');
-
-      // Jika response code antara 200-299, server dianggap aktif
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
       print('❌ Server status check failed: $e');
@@ -85,7 +79,6 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
 
     try {
-      // Coba load dari cache dulu
       final cachedInfo = prefs.getString('device_info');
       if (cachedInfo != null) {
         _deviceInfo = Map<String, String>.from(jsonDecode(cachedInfo));
@@ -120,24 +113,20 @@ class ApiService {
           'device_id': _deviceId!,
         };
       } else {
-        // Fallback untuk platform lain
         _deviceId = const Uuid().v4();
         info = {'platform': Platform.operatingSystem, 'device_id': _deviceId!};
       }
 
-      // Add app info
       info['app_version'] = '1.0.0';
       info['build_number'] = '1';
       info['timestamp'] = DateTime.now().toIso8601String();
 
       _deviceInfo = info;
 
-      // Cache device info
       await prefs.setString('device_info', jsonEncode(info));
       print('📱 Device info cached: ${info['platform']} ${info['model']}');
     } catch (e) {
       print('⚠️ Error getting device info: $e');
-      // Fallback device info yang lebih robust
       _deviceId = prefs.getString('fallback_device_id') ?? const Uuid().v4();
       await prefs.setString('fallback_device_id', _deviceId!);
 
@@ -162,7 +151,7 @@ class ApiService {
       return isConnected;
     } catch (e) {
       print('⚠️ Connectivity check failed: $e');
-      return true; // Assume connected if check fails
+      return true;
     }
   }
 
@@ -229,11 +218,8 @@ class ApiService {
           throw Exception('Unsupported HTTP method: $method');
       }
 
-      print(
-        '📡 ${method.toUpperCase()} $endpoint - Status: ${response.statusCode}',
-      );
+      print('📡 ${method.toUpperCase()} $endpoint - Status: ${response.statusCode}');
 
-      // Log response body untuk debugging (hanya sebagian)
       if (response.body.isNotEmpty) {
         final bodyPreview = response.body.length > 200
             ? '${response.body.substring(0, 200)}...'
@@ -263,14 +249,12 @@ class ApiService {
       final uri = Uri.parse('$baseUrl/predict');
       final request = http.MultipartRequest('POST', uri);
 
-      // Add headers
       request.headers.addAll({
         'Accept': 'application/json',
         'X-User-ID': userId,
         'X-Device-Info': jsonEncode(deviceInfo),
       });
 
-      // Add image file dengan validasi
       if (!await imageFile.exists()) {
         throw Exception('Image file does not exist');
       }
@@ -282,7 +266,7 @@ class ApiService {
       );
       request.files.add(multipartFile);
 
-      // ✅ IoT sensor integration — kirim data sensor real-time ke LLM
+      // IoT sensor integration — kirim data sensor real-time ke LLM
       request.fields['use_sensor'] = 'true';
 
       print('🔄 Uploading image (${multipartFile.length} bytes)...');
@@ -301,7 +285,6 @@ class ApiService {
 
           final result = PredictionResult.fromJson(jsonData);
 
-          // Save prediction ID for chat context
           if (jsonData['prediction_id'] != null) {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString(
@@ -311,7 +294,6 @@ class ApiService {
             print('💾 Saved prediction ID: ${jsonData['prediction_id']}');
           }
 
-          // Show database save status
           final savedToDb = jsonData['saved_to_database'] ?? false;
           print(
             savedToDb
@@ -333,7 +315,6 @@ class ApiService {
         print('❌ Server error: ${response.statusCode}');
         print('📄 Error response: ${response.body}');
 
-        // Try to parse error response
         try {
           final errorData = jsonDecode(response.body);
           print('🔍 Error details: ${errorData['error']}');
@@ -368,7 +349,6 @@ class ApiService {
 
       await initializeSession();
 
-      // Get current prediction ID if not provided
       if (predictionId == null) {
         final prefs = await SharedPreferences.getInstance();
         predictionId = prefs.getString('current_prediction_id');
@@ -424,9 +404,7 @@ class ApiService {
     int offset = 0,
   }) async {
     try {
-      print(
-        '📊 Getting SIMPLIFIED user history (limit: $limit, offset: $offset)...',
-      );
+      print('📊 Getting user history (limit: $limit, offset: $offset)...');
       await initializeSession();
 
       final deviceInfo = await _getDeviceInfo();
@@ -448,17 +426,17 @@ class ApiService {
             return null;
           }
 
-          print('✅ Received SIMPLIFIED response from server');
+          print('✅ Received response from server');
           print('📊 Response keys: ${jsonData.keys.toList()}');
 
           final historyResponse = HistoryResponse.fromJson(jsonData);
-          print('✅ SIMPLIFIED HistoryResponse parsed successfully');
+          print('✅ HistoryResponse parsed successfully');
           print('📊 History items: ${historyResponse.history.length}');
           print('📊 Pagination total: ${historyResponse.pagination.total}');
 
           return historyResponse;
         } catch (modelParseError) {
-          print('❌ SIMPLIFIED HistoryResponse parsing error: $modelParseError');
+          print('❌ HistoryResponse parsing error: $modelParseError');
           return null;
         }
       } else {
@@ -467,13 +445,13 @@ class ApiService {
         return null;
       }
     } catch (e, stackTrace) {
-      print('❌ Get SIMPLIFIED history error: $e');
+      print('❌ Get history error: $e');
       print('🔍 StackTrace: $stackTrace');
       return null;
     }
   }
 
-  // Add method untuk get image URL
+  // Get image URL (backend saat ini selalu kirim null)
   Future<String?> getImageUrl(String predictionId) async {
     try {
       final response = await _makeRequest(
@@ -492,7 +470,7 @@ class ApiService {
     }
   }
 
-  // Add method untuk delete history item
+  // Delete history item
   Future<bool> deleteHistoryItem(String predictionId) async {
     try {
       print('🗑️ Deleting history item: $predictionId');
@@ -517,7 +495,7 @@ class ApiService {
     }
   }
 
-  // Tambahkan method debug untuk test
+  // Debug user data
   Future<Map<String, dynamic>?> debugUserData() async {
     try {
       await initializeSession();
@@ -540,12 +518,11 @@ class ApiService {
     }
   }
 
-  // Test server connection (perbaikan: tambah database test)
+  // Test server connection (health + database)
   Future<Map<String, dynamic>?> testConnection() async {
     try {
       print('🔍 Testing server connection...');
 
-      // Test basic health endpoint
       final healthResponse = await _makeRequest(
         'GET',
         '/health',
@@ -556,7 +533,6 @@ class ApiService {
         final healthData = jsonDecode(healthResponse!.body);
         print('✅ Server health check passed');
 
-        // Test database connection
         try {
           final dbResponse = await _makeRequest(
             'GET',
@@ -608,7 +584,7 @@ class ApiService {
     }
   }
 
-  // Clear user session (for logout/reset)
+  // Clear user session
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user_id');
@@ -623,7 +599,7 @@ class ApiService {
     print('🗑️ User session cleared');
   }
 
-  // Get current user ID (for UI display)
+  // Get current user ID
   Future<String?> getCurrentUserId() async {
     try {
       return await _getUserId();
@@ -633,7 +609,7 @@ class ApiService {
     }
   }
 
-  // Debug method untuk testing
+  // Debug info
   Future<Map<String, dynamic>> getDebugInfo() async {
     await initializeSession();
 
