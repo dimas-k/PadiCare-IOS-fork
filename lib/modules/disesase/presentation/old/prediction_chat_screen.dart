@@ -8,6 +8,8 @@ import 'package:klasifikasi_penyakit_padi/modules/disesase/presentation/widgets/
 import 'package:klasifikasi_penyakit_padi/modules/disesase/presentation/widgets/image_section.dart';
 import 'package:klasifikasi_penyakit_padi/modules/disesase/presentation/widgets/prediction_result_card.dart';
 import 'package:klasifikasi_penyakit_padi/modules/disesase/presentation/widgets/server_status_dialog.dart';
+import 'package:klasifikasi_penyakit_padi/modules/disesase/presentation/widgets/sensor_input_sheet.dart';
+import 'package:klasifikasi_penyakit_padi/modules/disesase/presentation/widgets/sensor_info_panel.dart';
 
 import '../../logic/models/prediction_model.dart';
 import '../../logic/models/chat_model.dart';
@@ -49,6 +51,13 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
   bool _isSending = false;
   bool _isChatMinimized = true;
   bool _isServerReachable = true;
+
+  // Sensor state
+  Map<String, dynamic>? _sensorInfo; // respons /sensor (ThingsBoard historis)
+  Map<String, dynamic>? _manualSensorData; // data manual yang diisi pengguna
+  bool _showSensorOption = false; // tampilkan opsi tambah data realtime
+  bool _usedManualSensor = false; // sudah memakai data manual/realtime
+  bool _isAddingSensor = false; // sedang analisa ulang dgn data manual
 
   // Animation controllers
   late AnimationController _chatAnimationController;
@@ -156,10 +165,57 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
           _result = null;
           _messages.clear();
           _isChatMinimized = true;
+          _sensorInfo = null;
+          _manualSensorData = null;
+          _showSensorOption = false;
+          _usedManualSensor = false;
         });
       }
     } catch (e) {
       _showErrorSnackBar('Gagal mengambil gambar: $e');
+    }
+  }
+
+  // ==================== SENSOR INPUT ====================
+  /// Sembunyikan opsi tambah data realtime (pengguna memilih "Tidak").
+  void _dismissSensorOption() {
+    setState(() => _showSensorOption = false);
+  }
+
+  /// Tampilkan form input data sensor realtime, lalu analisa ULANG gambar
+  /// yang sama memakai data manual tersebut agar penjelasan lebih akurat.
+  Future<void> _addRealtimeSensor() async {
+    if (_selectedImage == null) return;
+
+    final manual = await SensorInputSheet.show(context);
+    // Pengguna menutup form tanpa memilih apa pun
+    if (manual == null) return;
+    // Pengguna menekan "Lewati" tanpa mengisi data
+    if (manual.isEmpty) {
+      _showErrorSnackBar('Belum ada data yang diisi.');
+      return;
+    }
+
+    setState(() => _isAddingSensor = true);
+
+    try {
+      final result = await _apiService.predictImage(
+        _selectedImage!,
+        manualSensor: manual,
+      );
+
+      setState(() {
+        _result = result;
+        _manualSensorData = manual;
+        _usedManualSensor = true;
+        _showSensorOption = false;
+        _isAddingSensor = false;
+      });
+
+      _showSuccessSnackBar('Penjelasan diperbarui dengan data realtime!');
+    } catch (e) {
+      setState(() => _isAddingSensor = false);
+      _showErrorSnackBar('Gagal memperbarui penjelasan: $e');
     }
   }
 
@@ -170,13 +226,29 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _sensorInfo = null;
+      _manualSensorData = null;
+      _showSensorOption = false;
+      _usedManualSensor = false;
+    });
 
     try {
+      // Analisa penyakit memakai data sensor ThingsBoard (historis)
       final result = await _apiService.predictImage(_selectedImage!);
+
+      // Ambil info sensor untuk ditampilkan + peringatan data historis
+      Map<String, dynamic>? sensorInfo;
+      try {
+        sensorInfo = await _apiService.fetchSensor();
+      } catch (_) {}
 
       setState(() {
         _result = result;
+        _sensorInfo = sensorInfo;
+        _showSensorOption =
+            sensorInfo != null && sensorInfo['is_realtime'] != true;
         _isLoading = false;
       });
 
@@ -221,6 +293,7 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
         messageText,
         formatDiseaseName(_result!.predictedClass),
         predictionId: _result!.predictionId,
+        manualSensor: _usedManualSensor ? _manualSensorData : null,
       );
 
       if (response != null) {
@@ -472,6 +545,20 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
                           isHistoryMode: widget.isHistoryMode,
                           primaryColor: primaryColor,
                           accentColor: accentColor,
+                        ),
+
+                      if (_result != null &&
+                          !widget.isHistoryMode &&
+                          _sensorInfo != null)
+                        SensorInfoPanel(
+                          sensorInfo: _sensorInfo,
+                          manualData: _manualSensorData,
+                          usedManual: _usedManualSensor,
+                          showOption: _showSensorOption,
+                          isBusy: _isAddingSensor,
+                          onAddRealtime: _addRealtimeSensor,
+                          onDismissOption: _dismissSensorOption,
+                          primaryColor: primaryColor,
                         ),
 
                       if (_result != null && _isChatMinimized)

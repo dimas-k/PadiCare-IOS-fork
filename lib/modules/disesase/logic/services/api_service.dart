@@ -253,8 +253,23 @@ class ApiService {
     }
   }
 
+  // Ambil data sensor terkini (untuk peringatan data historis di UI)
+  Future<Map<String, dynamic>?> fetchSensor() async {
+    try {
+      final response =
+          await _makeRequest('GET', '/sensor', requiresAuth: false);
+      if (response != null && response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      print('⚠️ fetchSensor error: $e');
+    }
+    return null;
+  }
+
   // Predict image with PostgreSQL integration
-  Future<PredictionResult?> predictImage(File imageFile) async {
+  Future<PredictionResult?> predictImage(File imageFile,
+      {Map<String, dynamic>? manualSensor}) async {
     try {
       print('📤 Starting image prediction...');
       print('📁 Image file: ${imageFile.path}');
@@ -289,6 +304,12 @@ class ApiService {
 
       // ✅ IoT sensor integration — kirim data sensor real-time ke LLM
       request.fields['use_sensor'] = 'true';
+
+      // 🧪 Input sensor MANUAL (opsional) dari pengguna — diprioritaskan backend
+      if (manualSensor != null && manualSensor.isNotEmpty) {
+        request.fields['manual_sensor'] = jsonEncode(manualSensor);
+        print('🧪 manual_sensor dikirim: ${request.fields['manual_sensor']}');
+      }
 
       print('🔄 Uploading image (${multipartFile.length} bytes)...');
       final streamedResponse = await request.send().timeout(timeoutDuration);
@@ -363,6 +384,7 @@ class ApiService {
     String question,
     String diseaseContext, {
     String? predictionId,
+    Map<String, dynamic>? manualSensor,
   }) async {
     try {
       print('💬 Starting chat request...');
@@ -386,7 +408,12 @@ class ApiService {
       final requestBody = {
         'question': question,
         'disease_context': diseaseContext,
+        // Chat memakai data sensor yang sama dengan analisa:
+        // manual (bila diisi) > ThingsBoard (historis).
+        'use_sensor': 'true',
         if (predictionId != null) 'prediction_id': predictionId,
+        if (manualSensor != null && manualSensor.isNotEmpty)
+          'manual_sensor': jsonEncode(manualSensor),
       };
 
       print('📤 Sending chat request...');
