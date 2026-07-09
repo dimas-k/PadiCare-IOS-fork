@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:klasifikasi_penyakit_padi/modules/disesase/logic/utils/disease_label.dart';
+import 'markdown_text.dart';
 
 class ExpertAdviceCard extends StatelessWidget {
   final String advice;
@@ -12,30 +14,61 @@ class ExpertAdviceCard extends StatelessWidget {
     required this.accentColor,
   }) : super(key: key);
 
-  Widget _buildFormattedExpertAdvice(String advice) {
-    List<Widget> widgets = [];
-    List<String> lines = advice.split('\n');
+  Widget _buildFormattedExpertAdvice(String rawAdvice) {
+    // Rapikan nama kelas mentah (mis. neck_blast -> Blas Leher Malai)
+    final advice = beautifyDiseaseText(rawAdvice);
 
-    for (String line in lines) {
-      if (line.trim().isEmpty) {
-        widgets.add(SizedBox(height: 8));
+    final List<Widget> widgets = [];
+    final List<String> lines = advice.split('\n');
+
+    final bodyStyle = TextStyle(
+      color: Colors.grey[800],
+      fontSize: 13,
+      height: 1.45,
+    );
+    final bulletStyle = TextStyle(
+      color: Colors.grey[700],
+      fontSize: 13,
+      height: 1.45,
+    );
+
+    bool isHeadingLine(String t) {
+      // Baris judul: diapit ** atau diawali ** dan diakhiri **/**:
+      if (t.startsWith('**')) {
+        final withoutColon = t.endsWith(':') ? t.substring(0, t.length - 1) : t;
+        return withoutColon.endsWith('**');
+      }
+      // Baris judul lama berbasis emoji
+      return RegExp(r'^[\u{1F9A0}\u{1F3E0}\u{1F4A1}\u{1F441}\u26A0\u{1F527}\u{1F48A}\u{1F6E1}\u{1F33E}\u{1F6A8}].*:$', unicode: true)
+          .hasMatch(t);
+    }
+
+    String stripHeading(String t) {
+      var s = t.trim();
+      if (s.endsWith(':')) s = s.substring(0, s.length - 1);
+      s = s.replaceAll('**', '').trim();
+      return s;
+    }
+
+    for (final rawLine in lines) {
+      final line = rawLine.trim();
+      if (line.isEmpty) {
+        widgets.add(const SizedBox(height: 8));
         continue;
       }
 
-      Widget textWidget;
-
-      if (RegExp(r'^[🦠🏠💡👁️⚠️🔧💊🛡️🌾🚨].*:$').hasMatch(line.trim())) {
-        textWidget = Container(
+      if (isHeadingLine(line)) {
+        widgets.add(Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          margin: EdgeInsets.only(top: 8, bottom: 4),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          margin: const EdgeInsets.only(top: 8, bottom: 4),
           decoration: BoxDecoration(
             color: primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border(left: BorderSide(width: 4, color: primaryColor)),
           ),
           child: Text(
-            line.trim(),
+            stripHeading(line),
             style: TextStyle(
               color: primaryColor,
               fontSize: 14,
@@ -43,63 +76,48 @@ class ExpertAdviceCard extends StatelessWidget {
               height: 1.3,
             ),
           ),
-        );
-      } else if (RegExp(r'^\d+\.').hasMatch(line.trim())) {
-        textWidget = Container(
-          padding: EdgeInsets.only(left: 16, right: 8, top: 2, bottom: 2),
+        ));
+        continue;
+      }
+
+      final bulletMatch = RegExp(r'^[-*\u2022]\s+(.*)$').firstMatch(line);
+      final numberMatch = RegExp(r'^(\d+)\.\s+(.*)$').firstMatch(line);
+
+      if (bulletMatch != null || numberMatch != null) {
+        final content =
+            bulletMatch != null ? bulletMatch.group(1)! : numberMatch!.group(2)!;
+        widgets.add(Container(
+          padding: const EdgeInsets.only(left: 16, right: 8, top: 2, bottom: 2),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 6,
                 height: 6,
-                margin: EdgeInsets.only(top: 6, right: 8),
+                margin: const EdgeInsets.only(top: 7, right: 8),
                 decoration: BoxDecoration(
                   color: accentColor,
                   shape: BoxShape.circle,
                 ),
               ),
               Expanded(
-                child: Text(
-                  line.trim().replaceFirst(RegExp(r'^\d+\.\s*'), ''),
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
+                child: Text.rich(
+                  TextSpan(children: parseInlineMarkdown(content, bulletStyle)),
                 ),
               ),
             ],
           ),
-        );
-      } else if (RegExp(r'^[📉⏱️🏪📖🕐💰]').hasMatch(line.trim())) {
-        textWidget = Container(
-          padding: EdgeInsets.only(left: 16, right: 8, top: 2, bottom: 2),
-          child: Text(
-            line.trim(),
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 12,
-              height: 1.4,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        );
-      } else {
-        textWidget = Container(
-          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          child: Text(
-            line.trim(),
-            style: TextStyle(
-              color: Colors.grey[800],
-              fontSize: 13,
-              height: 1.4,
-            ),
-          ),
-        );
+        ));
+        continue;
       }
 
-      widgets.add(textWidget);
+      // Paragraf biasa (dengan dukungan **tebal** di tengah kalimat)
+      widgets.add(Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Text.rich(
+          TextSpan(children: parseInlineMarkdown(line, bodyStyle)),
+        ),
+      ));
     }
 
     return Column(
@@ -112,14 +130,14 @@ class ExpertAdviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(8),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Colors.amber.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -130,7 +148,7 @@ class ExpertAdviceCard extends StatelessWidget {
                   size: 20,
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Saran Ahli Penyuluhan',
@@ -143,7 +161,7 @@ class ExpertAdviceCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           _buildFormattedExpertAdvice(advice),
         ],
       ),

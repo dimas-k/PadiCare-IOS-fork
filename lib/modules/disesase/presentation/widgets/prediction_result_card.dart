@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:klasifikasi_penyakit_padi/modules/disesase/logic/models/prediction_model.dart';
+import 'package:klasifikasi_penyakit_padi/modules/disesase/logic/utils/disease_label.dart';
 import 'package:klasifikasi_penyakit_padi/modules/disesase/presentation/widgets/top_predictions_card.dart';
 import 'expert_advice_card.dart';
 
@@ -123,7 +124,7 @@ class PredictionResultCard extends StatelessWidget {
                 ),
                 SizedBox(height: 6),
                 Text(
-                  result.predictedClass,
+                  formatDiseaseName(result.predictedClass),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:klasifikasi_penyakit_padi/modules/disesase/logic/models/history_model.dart';
+import 'package:klasifikasi_penyakit_padi/modules/disesase/logic/utils/disease_label.dart';
+import 'markdown_text.dart';
 
 class ChatSection extends StatelessWidget {
   final Animation<double> animation;
@@ -250,14 +252,23 @@ class ChatSection extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Text(
-                    message.message,
-                    style: TextStyle(
-                      color: isUser ? Colors.white : Colors.grey[800],
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  ),
+                  child: isUser
+                      ? Text(
+                          message.message,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        )
+                      : MarkdownText(
+                          text: beautifyDiseaseText(message.message),
+                          baseStyle: TextStyle(
+                            color: Colors.grey[800],
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
                 ),
                 SizedBox(height: 4),
                 Text(

@@ -1,8 +1,10 @@
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:image_picker/image_picker.dart';
 import 'logic/services/api_service.dart';
+import 'logic/services/auth_service.dart';
 import 'logic/controllers/prediction_controller.dart';
 import 'logic/controllers/chat_controller.dart';
+import 'presentation/auth_gate.dart';
 import 'presentation/old/prediction_chat_screen.dart';
 import 'presentation/history_screen.dart';
 
@@ -16,6 +18,7 @@ class DiseaseModule extends Module {
   List<Bind> get binds => [
     // Services
     Bind.lazySingleton((i) => ApiService()),
+    Bind.lazySingleton((i) => AuthService()),
 
     // Controllers
     Bind.lazySingleton((i) => PredictionController()),
@@ -27,8 +30,8 @@ class DiseaseModule extends Module {
 
   @override
   List<ModularRoute> get routes => [
-    // Main screen adalah prediction chat screen
-    ChildRoute(homeRoute, child: (_, __) => const PredictionChatScreen()),
+    // Gerbang login: menentukan Login atau Home berdasarkan status login
+    ChildRoute(homeRoute, child: (_, __) => const AuthGate()),
 
     // Route untuk history
     ChildRoute(historyRoute, child: (_, __) => HistoryScreen()),

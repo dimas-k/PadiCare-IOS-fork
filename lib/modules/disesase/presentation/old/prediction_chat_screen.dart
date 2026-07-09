@@ -13,7 +13,10 @@ import '../../logic/models/prediction_model.dart';
 import '../../logic/models/chat_model.dart';
 import '../../logic/models/history_model.dart';
 import '../../logic/services/api_service.dart';
+import '../../logic/utils/disease_label.dart';
+import '../../logic/services/auth_service.dart';
 import '../history_screen.dart';
+import '../login_screen.dart';
 
 class PredictionChatScreen extends StatefulWidget {
   final PredictionHistoryItem? historyItem;
@@ -216,7 +219,7 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
     try {
       final response = await _apiService.chatWithExpert(
         messageText,
-        _result!.predictedClass,
+        formatDiseaseName(_result!.predictedClass),
         predictionId: _result!.predictionId,
       );
 
@@ -288,6 +291,38 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => HistoryScreen()),
+    );
+  }
+
+  // ==================== LOGOUT ====================
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar'),
+        content: const Text('Yakin ingin keluar dari akun?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    await AuthService().logout();
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
     );
   }
 
@@ -504,6 +539,11 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
             icon: Icon(Icons.history),
             onPressed: _navigateToHistory,
             tooltip: 'Lihat Riwayat',
+          ),
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Keluar',
           ),
         ],
       ],
