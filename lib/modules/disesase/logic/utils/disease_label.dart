@@ -34,11 +34,25 @@ String formatDiseaseName(String raw) {
 
 /// Ganti semua token nama kelas mentah yang muncul di dalam teks
 /// (mis. "...(neck_blast)") dengan label rapi, tanpa merusak kata lain.
+/// Ubah nama kelas mentah (mis. "neck_blast") menjadi istilah asing yang rapi
+/// (mis. "Neck Blast") — underscore jadi spasi + tiap kata huruf awal kapital.
+String _englishTermFromRaw(String raw) {
+  return raw
+      .split('_')
+      .where((w) => w.isNotEmpty)
+      .map((w) => w[0].toUpperCase() + w.substring(1))
+      .join(' ');
+}
+
 String beautifyDiseaseText(String text) {
   var result = text;
-  kDiseaseLabels.forEach((raw, label) {
+  // Token mentah diubah ke istilah Inggris (bukan diterjemahkan lagi ke
+  // Indonesia) supaya teks dalam kurung berisi nama bahasa lain.
+  // Contoh: "Blas Leher Malai (neck_blast)" -> "Blas Leher Malai (Neck Blast)".
+  for (final raw in kDiseaseLabels.keys) {
+    final english = _englishTermFromRaw(raw);
     final re = RegExp('\\b' + RegExp.escape(raw) + '\\b', caseSensitive: false);
-    result = result.replaceAll(re, label);
-  });
+    result = result.replaceAll(re, english);
+  }
   return result;
 }

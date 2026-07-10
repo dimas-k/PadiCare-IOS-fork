@@ -58,7 +58,7 @@ class ChatSection extends StatelessWidget {
       builder: (context, child) {
         return Container(
           height: isChatMinimized
-              ? 60
+              ? 72
               : isSmallScreen
               ? screenHeight * 0.35
               : screenHeight * 0.4,
@@ -92,7 +92,7 @@ class ChatSection extends StatelessWidget {
     return InkWell(
       onTap: onToggleChat,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
