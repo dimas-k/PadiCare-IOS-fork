@@ -1,7 +1,7 @@
 name: klasifikasi_penyakit_padi
 description: "Deteksi penyakit padi menggunakan deep learning berbasis Flutter"
 publish_to: "none"
-version: 0.1.0
+version: 1.1.0
 
 environment:
   sdk: ^3.8.1

@@ -134,7 +134,10 @@ class PredictionResultCard extends StatelessWidget {
               ],
             ),
           ),
-          Container(
+          // Badge confidence disembunyikan untuk hasil OOD (bukan padi),
+          // karena tidak ada skor keyakinan penyakit yang relevan.
+          if (result.predictedClass != 'bukan_padi')
+            Container(
             padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: result.confidencePercentage > 70

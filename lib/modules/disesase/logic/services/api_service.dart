@@ -20,10 +20,10 @@ class ApiService {
   //
   // 2) TESTING LOKAL — HP fisik (HP & laptop harus satu WiFi), ganti IP laptopmu:
   //    (cek IP dengan `ipconfig` di Windows / `ifconfig` di Mac/Linux)
-  static const String baseUrl = 'https://rice-disease.petanitech.com';
+  // static const String baseUrl = 'https://rice-disease.petanitech.com';
   //
   // 3) TESTING LOKAL — Emulator Android:
-  // static const String baseUrl = 'http://10.72.78.105:8000';
+  static const String baseUrl = 'http://192.168.100.39:8000';
 
   static const Duration timeoutDuration = Duration(seconds: 60);
 

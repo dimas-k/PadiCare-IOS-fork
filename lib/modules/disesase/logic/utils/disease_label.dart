@@ -16,6 +16,8 @@ const Map<String, String> kDiseaseLabels = {
   'sheath_blight': 'Hawar Pelepah',
   'tungro': 'Tungro',
   'harvest_stage': 'Siap Panen',
+  // Label khusus untuk hasil gate OOD (gambar bukan tanaman padi)
+  'bukan_padi': 'Bukan Tanaman Padi',
 };
 
 /// Ubah nama kelas mentah (mis. "neck_blast") menjadi label rapi.
