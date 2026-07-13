@@ -548,6 +548,7 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
                         ),
 
                       if (_result != null &&
+                          _result!.predictedClass != 'bukan_padi' &&
                           !widget.isHistoryMode &&
                           _sensorInfo != null)
                         SensorInfoPanel(
