@@ -229,7 +229,10 @@ class HistoryImageView extends StatelessWidget {
   }
 
   Widget _buildNetworkImage(String imageUrl) {
-    final fullImageUrl = '${ApiService.baseUrl}$imageUrl';
+    // URL dari Supabase Storage sudah absolut (https). Jangan tambahkan baseUrl.
+    final fullImageUrl = imageUrl.startsWith('http')
+        ? imageUrl
+        : '${ApiService.baseUrl}$imageUrl';
 
     return GestureDetector(
       onTap: onTap,

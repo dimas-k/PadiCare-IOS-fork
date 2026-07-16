@@ -42,9 +42,7 @@ class PredictionResultCard extends StatelessWidget {
               predictions: result.top3Predictions,
               isHistoryMode: isHistoryMode,
               primaryColor: primaryColor,
-            )
-          else if (isHistoryMode)
-            _buildNoTopPredictionsMessage(),
+            ),
           SizedBox(height: 16),
           if (result.expertAdvice != null && result.expertAdvice!.isNotEmpty)
             ExpertAdviceCard(
@@ -167,30 +165,4 @@ class PredictionResultCard extends StatelessWidget {
     );
   }
 
-  Widget _buildNoTopPredictionsMessage() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 16),
-      child: Container(
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.orange.withOpacity(0.3)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Top 3 prediksi tidak tersedia untuk riwayat ini',
-                style: TextStyle(color: Colors.orange[700], fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

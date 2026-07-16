@@ -80,7 +80,9 @@ class ChatSection extends StatelessWidget {
             children: [
               _buildChatHeader(),
               if (!isChatMinimized) _buildChatMessages(),
-              if (!isChatMinimized && !isHistoryMode) _buildChatInput(),
+              // Input chat tetap tampil di mode riwayat agar pengguna
+              // bisa melakukan konsultasi lanjutan pada prediksi tersebut.
+              if (!isChatMinimized) _buildChatInput(),
             ],
           ),
         );

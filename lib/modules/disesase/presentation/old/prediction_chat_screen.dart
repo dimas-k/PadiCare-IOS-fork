@@ -114,7 +114,7 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
   }
 
   // ==================== HISTORY MODE ====================
-  void _loadHistoryData() {
+  Future<void> _loadHistoryData() async {
     print('📜 Loading history data...');
     final item = widget.historyItem!;
 
@@ -130,11 +130,21 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
         savedToDatabase: true,
       );
       _messages = item.chatMessages;
-      _isChatMinimized = _messages.isEmpty;
+      // Mode riwayat: buka panel chat agar pengguna bisa konsultasi lanjutan.
+      _isChatMinimized = false;
     });
 
+    // Endpoint list /history tidak mengirim chat_messages, jadi muat
+    // percakapan sebelumnya untuk prediksi ini langsung dari backend.
+    if (item.chatMessages.isEmpty) {
+      final previous = await _apiService.getChatByPrediction(item.id);
+      if (previous.isNotEmpty && mounted) {
+        setState(() => _messages = previous);
+      }
+    }
+
+    _chatAnimationController.forward();
     if (_messages.isNotEmpty) {
-      _chatAnimationController.forward();
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
   }
@@ -434,7 +444,9 @@ class _PredictionChatScreenState extends State<PredictionChatScreen>
   }
 
   void _showFullScreenHistoryImage(BuildContext context, String imageUrl) {
-    final fullImageUrl = '${ApiService.baseUrl}$imageUrl';
+    // URL Supabase Storage sudah absolut; hanya tambahkan baseUrl bila relatif.
+    final fullImageUrl =
+        imageUrl.startsWith('http') ? imageUrl : '${ApiService.baseUrl}$imageUrl';
 
     showDialog(
       context: context,

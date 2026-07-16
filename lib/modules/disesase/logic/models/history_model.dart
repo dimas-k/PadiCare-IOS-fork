@@ -150,7 +150,10 @@ class PredictionHistoryItem {
       try {
         final rawDate = json['timestamp'] ?? json['created_at'];
         if (rawDate is String) {
-          createdAt = DateTime.parse(rawDate);
+          // Backend menyimpan waktu dalam UTC; konversi ke zona waktu perangkat (WIB).
+          final hasTz = rawDate.endsWith('Z') ||
+              RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(rawDate);
+          createdAt = DateTime.parse(hasTz ? rawDate : '${rawDate}Z').toLocal();
         } else {
           createdAt = DateTime.now();
         }
@@ -275,7 +278,11 @@ class ChatMessageItem {
       DateTime createdAt;
       try {
         if (json['created_at'] != null && json['created_at'] is String) {
-          createdAt = DateTime.parse(json['created_at']);
+          final raw = json['created_at'] as String;
+          // Waktu dari server UTC → konversi ke waktu lokal perangkat.
+          final hasTz = raw.endsWith('Z') ||
+              RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(raw);
+          createdAt = DateTime.parse(hasTz ? raw : '${raw}Z').toLocal();
         } else {
           createdAt = DateTime.now();
         }

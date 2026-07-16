@@ -549,6 +549,73 @@ class ApiService {
     }
   }
 
+  // Ambil riwayat chat untuk satu prediksi (untuk chat lanjutan di riwayat).
+  // Memanggil endpoint backend GET /chat/history/by-prediction/{prediction_id}
+  // lalu memecah tiap baris (question + answer) menjadi dua bubble chat.
+  Future<List<ChatMessageItem>> getChatByPrediction(String predictionId) async {
+    try {
+      print('💬 Getting chat history for prediction: $predictionId');
+      await initializeSession();
+
+      final response = await _makeRequest(
+        'GET',
+        '/chat/history/by-prediction/$predictionId',
+      );
+
+      if (response?.statusCode == 200) {
+        final jsonData = jsonDecode(response!.body);
+        final rows = (jsonData['messages'] as List?) ?? [];
+
+        final List<ChatMessageItem> messages = [];
+        for (final row in rows) {
+          if (row is! Map<String, dynamic>) continue;
+
+          final createdAtRaw = row['created_at']?.toString();
+          DateTime baseTime = DateTime.now();
+          if (createdAtRaw != null) {
+            // Waktu server UTC → konversi ke zona waktu perangkat (WIB).
+            final hasTz = createdAtRaw.endsWith('Z') ||
+                RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(createdAtRaw);
+            baseTime = (DateTime.tryParse(
+                        hasTz ? createdAtRaw : '${createdAtRaw}Z') ??
+                    DateTime.now())
+                .toLocal();
+          }
+
+          final question = row['question']?.toString() ?? '';
+          final answer = row['answer']?.toString() ?? '';
+
+          if (question.isNotEmpty) {
+            messages.add(ChatMessageItem(
+              id: '${row['id']}_q',
+              message: question,
+              isUser: true,
+              createdAt: baseTime,
+            ));
+          }
+          if (answer.isNotEmpty) {
+            messages.add(ChatMessageItem(
+              id: '${row['id']}_a',
+              message: answer,
+              isUser: false,
+              createdAt: baseTime.add(const Duration(milliseconds: 1)),
+              responseSource: row['llm_used']?.toString(),
+            ));
+          }
+        }
+
+        print('✅ Loaded ${messages.length} chat messages for prediction');
+        return messages;
+      } else {
+        print('⚠️ getChatByPrediction failed: ${response?.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ getChatByPrediction error: $e');
+      return [];
+    }
+  }
+
   // Tambahkan method debug untuk test
   Future<Map<String, dynamic>?> debugUserData() async {
     try {
