@@ -25,7 +25,7 @@ class ApiService {
   // 3) TESTING LOKAL — Emulator Android:
   static const String baseUrl = 'http://192.168.100.39:8000';
 
-  static const Duration timeoutDuration = Duration(seconds: 60);
+  static const Duration timeoutDuration = Duration(seconds: 120);
 
   // User management
   static String? _userId;
