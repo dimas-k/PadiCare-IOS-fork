@@ -23,7 +23,7 @@ class ApiService {
   // static const String baseUrl = 'https://rice-disease.petanitech.com';
   //
   // 3) TESTING LOKAL — Emulator Android:
-  static const String baseUrl = 'http://192.168.100.39:8000';
+  static const String baseUrl = 'http://10.0.162.132:8000';
 
   static const Duration timeoutDuration = Duration(seconds: 120);
 
