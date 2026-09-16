@@ -129,7 +129,7 @@ class ChatSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isHistoryMode ? 'Riwayat Chat' : 'Tanya Ahli',
+                    isHistoryMode ? 'Riwayat Chat' : 'Tanya SIPADI',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -192,7 +192,7 @@ class ChatSection extends StatelessWidget {
           Text(
             isHistoryMode
                 ? 'Tidak ada percakapan'
-                : 'Mulai tanya ahli tentang hasil diagnosa',
+                : 'Mulai tanya SIPADI tentang hasil diagnosa',
             style: TextStyle(color: Colors.grey[600], fontSize: 14),
             textAlign: TextAlign.center,
           ),

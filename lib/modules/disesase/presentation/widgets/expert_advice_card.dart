@@ -151,7 +151,7 @@ class ExpertAdviceCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Saran Ahli Penyuluhan',
+                  'Hasil Diagnosa',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.grey[700],
